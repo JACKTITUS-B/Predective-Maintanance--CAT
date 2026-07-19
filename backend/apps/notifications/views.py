@@ -59,15 +59,19 @@ class MessageViewSet(viewsets.ModelViewSet):
         if user.role and user.role.name == "Super Admin":
             return Message.objects.all().select_related("sender", "recipient").order_by("created_at")
             
-        # If user is associated with a site, return messages involving them OR matching their site
+        # Return messages involving the user by object or email, or matching their assigned site
         if user.assigned_site:
             return Message.objects.filter(
                 Q(sender=user) |
                 Q(recipient=user) |
+                Q(sender_email=user.email) |
+                Q(recipient_email=user.email) |
                 Q(site__icontains=user.assigned_site)
             ).select_related("sender", "recipient").order_by("created_at")
             
-        return Message.objects.filter(Q(sender=user) | Q(recipient=user)).select_related("sender", "recipient").order_by("created_at")
+        return Message.objects.filter(
+            Q(sender=user) | Q(recipient=user) | Q(sender_email=user.email) | Q(recipient_email=user.email)
+        ).select_related("sender", "recipient").order_by("created_at")
 
     def perform_create(self, serializer):
         serializer.save(sender=self.request.user)

@@ -87,7 +87,12 @@ export const MessagesWorkspace: React.FC<MessagesWorkspaceProps> = ({
 
   const fetchMessages = async () => {
     try {
-      const res = await fetch(`${API_URL}/api/notifications/messages/`);
+      const token = localStorage.getItem("access_token");
+      const headers: Record<string, string> = {};
+      if (token) {
+        headers["Authorization"] = `Bearer ${token}`;
+      }
+      const res = await fetch(`${API_URL}/api/notifications/messages/`, { headers });
       if (res.ok) {
         const data = await res.json();
         const list = Array.isArray(data) ? data : data.results || [];
