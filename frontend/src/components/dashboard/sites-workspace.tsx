@@ -102,7 +102,30 @@ const siteTasksData: Record<string, Task[]> = {
   ]
 };
 
-export const SitesWorkspace: React.FC = () => {
+interface SitesWorkspaceProps {
+  onTriggerMessage?: (managerId: string, context: string, body: string) => void;
+}
+
+export const SitesWorkspace: React.FC<SitesWorkspaceProps> = ({ onTriggerMessage }) => {
+  const getManagerEmailForSite = (siteName: string): string => {
+    const norm = siteName.toLowerCase();
+    if (norm.includes("psg")) return "manager.psg@cat.com";
+    if (norm.includes("decatur")) return "manager.decatur@cat.com";
+    if (norm.includes("aurora")) return "manager.aurora@cat.com";
+    if (norm.includes("tucson")) return "manager.tucson@cat.com";
+    return "manager.psg@cat.com";
+  };
+
+  const handleMessageClick = (machineCode: string, siteName: string, severity: string) => {
+    if (onTriggerMessage) {
+      const managerEmail = getManagerEmailForSite(siteName);
+      onTriggerMessage(
+        managerEmail,
+        `Regarding ${machineCode.replace("CAT ", "CAT")} - ${severity.toUpperCase()} Alert`,
+        `Can you provide an update on why this machine is still in a ${severity} state?`
+      );
+    }
+  };
   // Enriched sites dataset
   const sites: Site[] = [
     {
@@ -337,7 +360,21 @@ export const SitesWorkspace: React.FC = () => {
                     <tbody className="divide-y divide-stone-200 dark:divide-stone-800">
                       {machines.map((m, i) => (
                         <tr key={i} className="hover:bg-stone-50/50 dark:hover:bg-stone-900/10">
-                          <td className="p-4 font-bold text-stone-800 dark:text-stone-200">{m.name}</td>
+                          <td className="p-4 font-bold text-stone-800 dark:text-stone-200">
+                            <div className="flex items-center gap-2">
+                              <span>{m.name}</span>
+                              {(m.status === "warning" || m.status === "critical") && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleMessageClick(m.name, selectedSite.name, m.status)}
+                                  title="Message Site Manager"
+                                  className="text-stone-500 hover:text-[#FFCD00] transition-colors cursor-pointer text-[10px]"
+                                >
+                                  💬
+                                </button>
+                              )}
+                            </div>
+                          </td>
                           <td className="p-4 font-mono text-stone-500">{m.serial}</td>
                           <td className="p-4 text-center">
                             <span className={`font-mono font-bold ${

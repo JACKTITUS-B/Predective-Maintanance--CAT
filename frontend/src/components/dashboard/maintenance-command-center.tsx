@@ -1,6 +1,7 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { useAuth } from "@/context/AuthContext";
 
 // Shared Interfaces
 export interface SharedTask {
@@ -70,6 +71,129 @@ export const MaintenanceCommandCenter: React.FC<MaintenanceCommandCenterProps> =
 }) => {
   // Command Center Navigation Tabs
   const [activeMaintTab, setActiveMaintTab] = useState<"alert-queue" | "final-inspection">("alert-queue");
+
+  // Live Chat Notifications State
+  interface Message {
+    id: string;
+    sender: string;
+    sender_email: string;
+    sender_name: string;
+    recipient: string;
+    recipient_email: string;
+    recipient_name: string;
+    site: string;
+    machine_code: string;
+    subject: string;
+    body: string;
+    is_read: boolean;
+    status: string;
+    created_at: string;
+  }
+
+  const { user } = useAuth();
+  const [chatMessages, setChatMessages] = useState<Message[]>([]);
+  const [showChatDrawer, setShowChatDrawer] = useState(false);
+  const [replyBody, setReplyBody] = useState("");
+
+  const fetchChatMessages = async () => {
+    try {
+      const res = await fetch("http://localhost:8000/api/notifications/messages/", {
+        headers: {
+          "Authorization": `Bearer ${localStorage.getItem("access_token")}`
+        }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const list = Array.isArray(data) ? data : data.results || [];
+        setChatMessages(list);
+      }
+    } catch (err) {
+      console.warn("Failed to fetch messages for maintenance view:", err);
+    }
+  };
+
+  useEffect(() => {
+    if (user) {
+      fetchChatMessages();
+      const interval = setInterval(fetchChatMessages, 5000);
+      return () => clearInterval(interval);
+    }
+  }, [user]);
+
+  const unreadCount = useMemo(() => {
+    return chatMessages.filter(m => m.sender_email !== user?.email && !m.is_read).length;
+  }, [chatMessages, user]);
+
+  const markAllAsRead = async () => {
+    const unreadList = chatMessages.filter(m => m.sender_email !== user?.email && !m.is_read);
+    for (const msg of unreadList) {
+      try {
+        await fetch(`http://localhost:8000/api/notifications/messages/${msg.id}/`, {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${localStorage.getItem("access_token")}`
+          },
+          body: JSON.stringify({ is_read: true })
+        });
+      } catch (err) {
+        console.warn("Error marking message as read:", err);
+      }
+    }
+    fetchChatMessages();
+  };
+
+  const handleSendReply = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!replyBody.trim()) return;
+
+    let adminId = "super-admin";
+    try {
+      const res = await fetch("http://localhost:8000/api/auth/users/", {
+        headers: {
+          "Authorization": `Bearer ${localStorage.getItem("access_token")}`
+        }
+      });
+      if (res.ok) {
+        const users = await res.json();
+        const list = Array.isArray(users) ? users : users.results || [];
+        const adminObj = list.find((u: any) => u.email === "admin@cat.com");
+        if (adminObj) {
+          adminId = adminObj.id;
+        }
+      }
+    } catch (err) {
+      console.warn("Failed to lookup admin ID:", err);
+    }
+
+    const payload = {
+      recipient: adminId,
+      recipient_email: "admin@cat.com",
+      body: replyBody,
+      site: user?.assigned_site || "PSG CAS Site",
+      machine_code: "",
+      subject: "Direct Message",
+      status: "Waiting for Reply"
+    };
+
+    try {
+      const res = await fetch("http://localhost:8000/api/notifications/messages/", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${localStorage.getItem("access_token")}`
+        },
+        body: JSON.stringify(payload)
+      });
+
+      if (res.ok) {
+        setReplyBody("");
+        fetchChatMessages();
+      }
+    } catch (err) {
+      console.error("Error sending message to Admin:", err);
+    }
+  };
 
   // Selected Card IDs
   const [selectedAlertId, setSelectedAlertId] = useState<string>("alert-1");
@@ -332,35 +456,57 @@ export const MaintenanceCommandCenter: React.FC<MaintenanceCommandCenterProps> =
 
   return (
     <div className="space-y-6 animate-fade-in">
-      {/* Dynamic Tab Controls */}
-      <div className="flex items-center gap-1.5 bg-stone-100 dark:bg-stone-900/60 p-1 rounded-md border border-stone-200 dark:border-stone-800 w-fit">
-        <button
-          type="button"
-          onClick={() => setActiveMaintTab("alert-queue")}
-          className={`text-[10px] font-bold uppercase tracking-wider px-4 py-2 rounded transition-all duration-150 ${
-            activeMaintTab === "alert-queue"
-              ? "bg-[#FFCD00] text-black shadow-sm"
-              : "text-stone-500 hover:text-stone-700 dark:text-stone-400 dark:hover:text-stone-250 bg-transparent"
-          }`}
-        >
-          Alert Queue
-        </button>
-        <button
-          type="button"
-          onClick={() => setActiveMaintTab("final-inspection")}
-          className={`text-[10px] font-bold uppercase tracking-wider px-4 py-2 rounded transition-all duration-150 flex items-center gap-1.5 ${
-            activeMaintTab === "final-inspection"
-              ? "bg-[#FFCD00] text-black shadow-sm"
-              : "text-stone-500 hover:text-stone-700 dark:text-stone-400 dark:hover:text-stone-250 bg-transparent"
-          }`}
-        >
-          Final Inspection
-          {inspectionTasks.length > 0 && (
-            <span className="bg-red-500 text-white font-mono text-[8px] font-extrabold px-1 rounded-full animate-pulse">
-              {inspectionTasks.length}
-            </span>
-          )}
-        </button>
+      {/* Header with Dynamic Tab Controls & Message Notification */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-1.5 bg-stone-100 dark:bg-stone-900/60 p-1 rounded-md border border-stone-200 dark:border-stone-800 w-fit">
+          <button
+            type="button"
+            onClick={() => setActiveMaintTab("alert-queue")}
+            className={`text-[10px] font-bold uppercase tracking-wider px-4 py-2 rounded transition-all duration-150 ${
+              activeMaintTab === "alert-queue"
+                ? "bg-[#FFCD00] text-black shadow-sm"
+                : "text-stone-500 hover:text-stone-700 dark:text-stone-400 dark:hover:text-stone-250 bg-transparent"
+            }`}
+          >
+            Alert Queue
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveMaintTab("final-inspection")}
+            className={`text-[10px] font-bold uppercase tracking-wider px-4 py-2 rounded transition-all duration-150 flex items-center gap-1.5 ${
+              activeMaintTab === "final-inspection"
+                ? "bg-[#FFCD00] text-black shadow-sm"
+                : "text-stone-500 hover:text-stone-700 dark:text-stone-400 dark:hover:text-stone-250 bg-transparent"
+            }`}
+          >
+            Final Inspection
+            {inspectionTasks.length > 0 && (
+              <span className="bg-red-500 text-white font-mono text-[8px] font-extrabold px-1 rounded-full animate-pulse">
+                {inspectionTasks.length}
+              </span>
+            )}
+          </button>
+        </div>
+
+        {/* Message notification trigger button */}
+        <div className="flex items-center gap-4">
+          <button
+            type="button"
+            onClick={() => {
+              setShowChatDrawer(true);
+              markAllAsRead();
+            }}
+            className="relative p-2.5 rounded-full bg-stone-950 hover:bg-stone-900 border border-stone-850 hover:border-[#FFCD00]/50 text-stone-400 hover:text-[#FFCD00] transition-all duration-200 cursor-pointer shadow-md active:scale-95 flex items-center justify-center"
+            title="Open Site Communications with Admin"
+          >
+            <span className="text-base">💬</span>
+            {unreadCount > 0 && (
+              <span className="absolute -top-1 -right-1 bg-red-605 text-white text-[8px] font-extrabold w-4 h-4 rounded-full flex items-center justify-center animate-bounce border border-stone-950">
+                {unreadCount}
+              </span>
+            )}
+          </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 items-start">
@@ -932,6 +1078,108 @@ export const MaintenanceCommandCenter: React.FC<MaintenanceCommandCenterProps> =
 
         </div>
       </div>
+
+      {/* SIDE CHAT DRAWER */}
+      {showChatDrawer && (
+        <div className="fixed inset-0 z-50 flex justify-end bg-black/60 backdrop-blur-xs animate-fade-in">
+          {/* Backdrop click close */}
+          <div className="flex-1" onClick={() => setShowChatDrawer(false)} />
+
+          {/* Drawer body */}
+          <div className="w-full max-w-md bg-stone-950 border-l border-stone-850 h-full flex flex-col shadow-2xl relative animate-slide-in">
+            {/* Header */}
+            <div className="p-4 border-b border-stone-850 bg-stone-905 flex justify-between items-center shrink-0">
+              <div>
+                <span className="text-[9px] uppercase font-extrabold tracking-widest text-[#FFCD00] block">
+                  Site Communications
+                </span>
+                <h4 className="text-sm font-bold text-stone-100 flex items-center gap-2">
+                  Admin Support Desk
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" title="Online" />
+                </h4>
+                <p className="text-[10px] text-stone-500 font-bold uppercase mt-0.5">
+                  Assigned Site: {user?.assigned_site || "N/A"}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowChatDrawer(false)}
+                className="text-stone-500 hover:text-stone-250 text-xs font-bold p-1.5 cursor-pointer uppercase tracking-wider"
+              >
+                ✕ Close
+              </button>
+            </div>
+
+            {/* Message Thread list */}
+            <div className="flex-1 overflow-y-auto p-4 space-y-4">
+              {chatMessages.length === 0 ? (
+                <div className="text-center py-20">
+                  <span className="text-3xl block mb-2">💬</span>
+                  <p className="text-xs text-stone-500 font-bold uppercase tracking-wider">
+                    No communications recorded
+                  </p>
+                  <p className="text-[10px] text-stone-600 max-w-[280px] mx-auto mt-1">
+                    Send updates regarding critical sensors, failure risks, or maintenance logs.
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {chatMessages.map((msg) => {
+                    const isOwn = msg.sender_email === user?.email;
+                    return (
+                      <div
+                        key={msg.id}
+                        className={`flex flex-col max-w-[80%] ${
+                          isOwn ? "ml-auto items-end" : "mr-auto items-start"
+                        }`}
+                      >
+                        <span className="text-[9px] text-stone-500 font-bold mb-1">
+                          {isOwn ? "You" : msg.sender_name} &bull; {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                        
+                        <div
+                          className={`p-3 rounded-lg text-xs leading-relaxed ${
+                            isOwn
+                              ? "bg-[#FFCD00] text-black rounded-tr-none font-semibold"
+                              : "bg-stone-900 border border-stone-850 text-stone-200 rounded-tl-none"
+                          }`}
+                        >
+                          {msg.machine_code && (
+                            <span className="mb-2 block bg-black/40 text-stone-300 font-mono text-[9px] w-fit border border-stone-800 px-1 rounded">
+                              Context: {msg.machine_code}
+                            </span>
+                          )}
+                          <p>{msg.body}</p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* Composer Footer */}
+            <form onSubmit={handleSendReply} className="p-4 border-t border-stone-850 bg-stone-900/60 shrink-0 space-y-3">
+              <div className="flex gap-2">
+                <textarea
+                  value={replyBody}
+                  onChange={(e) => setReplyBody(e.target.value)}
+                  placeholder="Write a message to Admin..."
+                  rows={2}
+                  className="flex-1 text-xs bg-stone-950 text-stone-200 border border-stone-850 rounded px-3 py-2 focus:outline-none focus:border-[#FFCD00] resize-none"
+                />
+                <button
+                  type="submit"
+                  disabled={!replyBody.trim()}
+                  className="bg-[#FFCD00] hover:bg-[#E6B800] text-black font-extrabold uppercase text-[10px] px-4 rounded shrink-0 transition-all active:scale-95 disabled:opacity-55 disabled:cursor-not-allowed cursor-pointer"
+                >
+                  Send
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

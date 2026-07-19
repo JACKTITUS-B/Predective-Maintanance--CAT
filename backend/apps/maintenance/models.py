@@ -161,6 +161,7 @@ class WorkOrder(models.Model):
     hours = models.FloatField(blank=True, null=True)
     rul = models.FloatField(blank=True, null=True)
     failure_prediction = models.CharField(max_length=255, blank=True, null=True)
+    failure_probability = models.IntegerField(blank=True, null=True, default=0)
     required_parts = models.JSONField(default=list, blank=True)
     instructions = models.JSONField(default=list, blank=True)
     engineer_notes = models.TextField(blank=True, null=True, default="")

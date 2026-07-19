@@ -2,7 +2,20 @@ import React from "react";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 
-export const SiteManagerDashboard: React.FC = () => {
+interface SiteManagerDashboardProps {
+  onTriggerMessage?: (managerId: string, context: string, body: string) => void;
+}
+
+export const SiteManagerDashboard: React.FC<SiteManagerDashboardProps> = ({ onTriggerMessage }) => {
+  const handleMessageClick = (machineCode: string, siteName: string, severity: string) => {
+    if (onTriggerMessage) {
+      onTriggerMessage(
+        "admin@cat.com",
+        `Regarding ${machineCode.replace("CAT ", "CAT")} - ${severity.toUpperCase()} Alert`,
+        `Can you provide an update on why this machine is still in a ${severity} state?`
+      );
+    }
+  };
   // Assigned Site Context
   const assignedSite = {
     name: "PSG CAS Facility",
@@ -116,7 +129,21 @@ export const SiteManagerDashboard: React.FC = () => {
                 <tbody className="divide-y divide-stone-200 dark:divide-stone-800">
                   {psgCasMachines.map((m) => (
                     <tr key={m.serial} className="hover:bg-stone-50/50 dark:hover:bg-stone-800/25 transition-colors">
-                      <td className="py-3.5 px-5 font-bold text-stone-900 dark:text-stone-100">{m.name}</td>
+                      <td className="py-3.5 px-5 font-bold text-stone-900 dark:text-stone-100">
+                        <div className="flex items-center gap-2">
+                          <span>{m.name}</span>
+                          {((m.status as string) === "warning" || (m.status as string) === "critical") && (
+                            <button
+                              type="button"
+                              onClick={() => handleMessageClick(m.name, assignedSite.name, m.status)}
+                              title="Message Admin"
+                              className="text-stone-500 hover:text-[#FFCD00] transition-colors cursor-pointer text-[10px]"
+                            >
+                              💬
+                            </button>
+                          )}
+                        </div>
+                      </td>
                       <td className="py-3.5 px-5 font-mono text-stone-500 dark:text-stone-400">{m.serial}</td>
                       <td className="py-3.5 px-5">
                         <div className="flex justify-center">

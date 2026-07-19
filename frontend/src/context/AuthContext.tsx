@@ -66,7 +66,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             clearAuthData();
           }
         } catch (err) {
-          console.error("Error restoring session:", err);
+          console.warn("Backend offline or connection failed during session restore.");
           clearAuthData();
         }
       }

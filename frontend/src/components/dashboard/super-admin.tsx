@@ -2,7 +2,31 @@ import React from "react";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 
-export const SuperAdminDashboard: React.FC = () => {
+interface SuperAdminDashboardProps {
+  onTriggerMessage?: (managerId: string, context: string, body: string) => void;
+}
+
+export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ onTriggerMessage }) => {
+  const getManagerEmailForSite = (siteName: string): string => {
+    const norm = siteName.toLowerCase();
+    if (norm.includes("psg")) return "manager.psg@cat.com";
+    if (norm.includes("decatur")) return "manager.decatur@cat.com";
+    if (norm.includes("aurora")) return "manager.aurora@cat.com";
+    if (norm.includes("tucson")) return "manager.tucson@cat.com";
+    return "manager.psg@cat.com";
+  };
+
+  const handleMessageClick = (machineCode: string, siteName: string, severity: string) => {
+    if (onTriggerMessage) {
+      const managerEmail = getManagerEmailForSite(siteName);
+      onTriggerMessage(
+        managerEmail,
+        `Regarding ${machineCode.replace("CAT ", "CAT")} - ${severity.toUpperCase()} Alert`,
+        `Can you provide an update on why this machine is still in a ${severity} state?`
+      );
+    }
+  };
+
   const [severityFilter, setSeverityFilter] = React.useState<string>("all");
   const [siteFilter, setSiteFilter] = React.useState<string>("all");
 
@@ -283,9 +307,19 @@ export const SuperAdminDashboard: React.FC = () => {
                   <div className="flex-1 min-w-0 space-y-2.5">
                     {/* Machine Code & Site Name */}
                     <div>
-                      <h4 className="text-xs font-extrabold text-stone-900 dark:text-stone-50 tracking-tight leading-none">
-                        {alert.machine.replace("CAT ", "CAT")}
-                      </h4>
+                      <div className="flex items-center justify-between">
+                        <h4 className="text-xs font-extrabold text-stone-900 dark:text-stone-50 tracking-tight leading-none">
+                          {alert.machine.replace("CAT ", "CAT")}
+                        </h4>
+                        <button
+                          type="button"
+                          onClick={() => handleMessageClick(alert.machine, alert.site, alert.severity)}
+                          title="Message Site Manager"
+                          className="text-stone-500 hover:text-[#FFCD00] transition-colors p-1 cursor-pointer"
+                        >
+                          💬
+                        </button>
+                      </div>
                       <span className="text-[10px] font-bold text-stone-400 dark:text-stone-500 mt-1 block">
                         {alert.site}
                       </span>

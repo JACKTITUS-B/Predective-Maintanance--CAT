@@ -21,6 +21,7 @@ import { ReportsModule } from "@/components/dashboard/reports-module";
 import { SitesWorkspace } from "@/components/dashboard/sites-workspace";
 import { MaintenanceCommandCenter } from "@/components/dashboard/maintenance-command-center";
 import { ServiceOperations } from "@/components/dashboard/service-operations";
+import { MessagesWorkspace } from "@/components/dashboard/messages-workspace";
 
 // Icons for Sidebar setup
 const Icons = {
@@ -64,6 +65,16 @@ export default function Home() {
   const [darkMode, setDarkMode] = useState(true);
   const [activeTab, setActiveTab] = useState("dashboard");
   const [copiedColor, setCopiedColor] = useState<string | null>(null);
+  const [messagesPrefill, setMessagesPrefill] = useState<{
+    managerId?: string;
+    context?: string;
+    body?: string;
+  } | null>(null);
+
+  const handleTriggerMessageToManager = (managerId: string, context: string, body: string) => {
+    setMessagesPrefill({ managerId, context, body });
+    setActiveTab("messages");
+  };
 
   const { user, loading, logout } = useAuth();
 
@@ -91,7 +102,8 @@ export default function Home() {
   const allowedTabs = useMemo(() => {
     if (!user) return [];
     const roleName = user.role?.name;
-    if (roleName === "Super Admin") return ["dashboard", "sites", "reports", "settings", "profile"];
+    if (roleName === "Super Admin") return ["dashboard", "sites", "reports", "messages", "profile"];
+    if (roleName === "Site Manager") return ["dashboard", "messages", "profile"];
     if (roleName === "Maintenance Team") return ["dashboard", "maintenance", "profile"];
     if (roleName === "Service Team") return ["dashboard", "service", "profile"];
     return [];
@@ -230,6 +242,7 @@ export default function Home() {
           hours: t.hours,
           rul: t.rul,
           failurePrediction: t.failure_prediction,
+          failureProbability: t.failure_probability,
           requiredParts: t.required_parts,
           instructions: t.instructions,
           engineerNotes: t.engineer_notes,
@@ -250,7 +263,7 @@ export default function Home() {
         setSharedTasks(mappedList);
       }
     } catch (err) {
-      console.error("Error fetching work orders:", err);
+      console.warn("Backend offline or connection failed during task fetch.");
     }
   };
 
@@ -473,8 +486,10 @@ export default function Home() {
               <MaintenanceEngineerDashboard />
             ) : userRole === "Service Team" ? (
               <ServiceTeamDashboard />
+            ) : userRole === "Site Manager" ? (
+              <SiteManagerDashboard onTriggerMessage={handleTriggerMessageToManager} />
             ) : (
-              <SuperAdminDashboard />
+              <SuperAdminDashboard onTriggerMessage={handleTriggerMessageToManager} />
             )
           )}
 
@@ -580,7 +595,17 @@ export default function Home() {
 
           {/* SITES WORKSPACE */}
           {activeTab === "sites" && (
-            <SitesWorkspace />
+            <SitesWorkspace onTriggerMessage={handleTriggerMessageToManager} />
+          )}
+
+          {/* TAB: MESSAGES WORKSPACE */}
+          {activeTab === "messages" && (
+            <MessagesWorkspace
+              prefilledManagerId={messagesPrefill?.managerId}
+              prefilledMessageContext={messagesPrefill?.context}
+              prefilledMessageBody={messagesPrefill?.body}
+              onClearPrefill={() => setMessagesPrefill(null)}
+            />
           )}
 
           {/* MAINTENANCE COMMAND CENTER */}
@@ -654,7 +679,7 @@ export default function Home() {
           )}
 
           {/* CATCH-ALL FOR MOCK TABS */}
-          {activeTab !== "dashboard" && activeTab !== "design-system" && activeTab !== "machines" && activeTab !== "reports" && activeTab !== "sites" && activeTab !== "maintenance" && activeTab !== "service" && activeTab !== "profile" && (
+          {activeTab !== "dashboard" && activeTab !== "design-system" && activeTab !== "machines" && activeTab !== "reports" && activeTab !== "sites" && activeTab !== "maintenance" && activeTab !== "service" && activeTab !== "profile" && activeTab !== "messages" && (
             <div className="space-y-6">
               <Card className="p-6 border border-stone-200 dark:border-stone-800">
                 <div className="flex items-center gap-4 mb-4">

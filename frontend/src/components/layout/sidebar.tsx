@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 
 // Role-based permissions mapping for menu items
-type UserRole = "Super Admin" | "Maintenance Team" | "Service Team";
+type UserRole = "Super Admin" | "Site Manager" | "Maintenance Team" | "Service Team";
 
 interface MenuItem {
   id: string;
@@ -75,10 +75,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
         <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a3 3 0 11-6 0 3 3 0 016 0z" />
       </svg>
     ),
-    Settings: () => (
+    Messages: () => (
       <svg className="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-        <circle cx="12" cy="12" r="3" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
       </svg>
     ),
     Logout: () => (
@@ -120,13 +119,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   // Sidebar Menu Items definitions matching role access constraints
   const menuItems: MenuItem[] = [
-    { id: "dashboard", label: "Dashboard", icon: <Icons.Dashboard />, allowedRoles: ["Super Admin", "Maintenance Team", "Service Team"] },
+    { id: "dashboard", label: "Dashboard", icon: <Icons.Dashboard />, allowedRoles: ["Super Admin", "Site Manager", "Maintenance Team", "Service Team"] },
     { id: "sites", label: "Sites", icon: <Icons.Sites />, allowedRoles: ["Super Admin"] },
     { id: "maintenance", label: "Maintenance", icon: <Icons.Maintenance />, allowedRoles: ["Maintenance Team"] },
     { id: "service", label: "Service", icon: <Icons.Service />, allowedRoles: ["Service Team"] },
     { id: "reports", label: "Reports", icon: <Icons.Reports />, allowedRoles: ["Super Admin"] },
-    { id: "settings", label: "Settings", icon: <Icons.Settings />, allowedRoles: ["Super Admin"] },
-    { id: "profile", label: "Profile", icon: <Icons.Users />, allowedRoles: ["Super Admin", "Maintenance Team", "Service Team"] }
+    { id: "messages", label: "Messages", icon: <Icons.Messages />, allowedRoles: ["Super Admin", "Site Manager"] },
+    { id: "profile", label: "Profile", icon: <Icons.Users />, allowedRoles: ["Super Admin", "Site Manager", "Maintenance Team", "Service Team"] }
   ];
 
   // Filter items matching userRole
