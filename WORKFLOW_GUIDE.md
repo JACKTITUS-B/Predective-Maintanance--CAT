@@ -229,3 +229,5 @@ The project is structured into independent apps (modules) in the Django backend 
        │                               ├─► Check role permissions    │
        │◄─ Renders API JSON payload ───┼─► Fetch machinery records ─►│
 ```
+
+Thank You
