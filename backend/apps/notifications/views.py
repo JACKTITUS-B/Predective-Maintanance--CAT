@@ -43,6 +43,7 @@ class NotificationViewSet(viewsets.ModelViewSet):
 
 
 from django.db.models import Q
+from django.contrib.auth import get_user_model
 from .models import Message
 from .serializers import MessageSerializer
 
@@ -64,14 +65,32 @@ class MessageViewSet(viewsets.ModelViewSet):
             return Message.objects.filter(
                 Q(sender=user) |
                 Q(recipient=user) |
-                Q(sender_email=user.email) |
-                Q(recipient_email=user.email) |
+                Q(sender__email__iexact=user.email) |
+                Q(recipient__email__iexact=user.email) |
                 Q(site__icontains=user.assigned_site)
             ).select_related("sender", "recipient").order_by("created_at")
             
         return Message.objects.filter(
-            Q(sender=user) | Q(recipient=user) | Q(sender_email=user.email) | Q(recipient_email=user.email)
+            Q(sender=user) | Q(recipient=user) | Q(sender__email__iexact=user.email) | Q(recipient__email__iexact=user.email)
         ).select_related("sender", "recipient").order_by("created_at")
 
     def perform_create(self, serializer):
-        serializer.save(sender=self.request.user)
+        User = get_user_model()
+        recipient_id = self.request.data.get("recipient")
+        recipient_email = self.request.data.get("recipient_email")
+        
+        recipient_user = None
+
+        if recipient_id:
+            try:
+                recipient_user = User.objects.filter(id=recipient_id).first()
+            except Exception:
+                pass
+
+        if not recipient_user and recipient_email:
+            recipient_user = User.objects.filter(email__iexact=recipient_email).first()
+
+        if not recipient_user:
+            recipient_user = User.objects.filter(role__name="Super Admin").first() or User.objects.filter(is_superuser=True).first()
+
+        serializer.save(sender=self.request.user, recipient=recipient_user)

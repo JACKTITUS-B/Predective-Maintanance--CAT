@@ -117,14 +117,14 @@ export const MessagesWorkspace: React.FC<MessagesWorkspaceProps> = ({
     const roleName = user?.role?.name || "Maintenance Team";
     const userSite = user?.assigned_site || "";
 
-    // 1. Super Admin -> Messages ONLY Maintenance Department of all sites
+    // 1. Super Admin -> Messages Maintenance Department across ALL sites
     if (roleName === "Super Admin") {
-      let contacts = allUsers.filter(u => u.role_name === "Maintenance Team" && u.email !== user?.email);
-      const knownManagers = [
-        { id: "mgr-1", email: "manager1@cat.com", name: "PSG CAS Maintenance Lead", assigned_site: "PSG CAS", role_name: "Maintenance Team" },
-        { id: "mgr-2", email: "manager2@cat.com", name: "PSG Tech Maintenance Lead", assigned_site: "PSG Tech", role_name: "Maintenance Team" },
-        { id: "mgr-3", email: "manager3@cat.com", name: "NGP Maintenance Lead", assigned_site: "NGP", role_name: "Maintenance Team" },
-        { id: "mgr-4", email: "manager4@cat.com", name: "KMCH Maintenance Lead", assigned_site: "KMCH", role_name: "Maintenance Team" },
+      let contacts = allUsers.filter(u => u.role_name === "Maintenance Team");
+      const knownManagers: UserProfile[] = [
+        { id: "maint-1", email: "maintain1@cat.com", name: "PSG CAS Maintenance Lead", assigned_site: "PSG CAS", role_name: "Maintenance Team" },
+        { id: "maint-2", email: "maintain2@cat.com", name: "PSG Tech Maintenance Lead", assigned_site: "PSG Tech", role_name: "Maintenance Team" },
+        { id: "maint-3", email: "maintain3@cat.com", name: "NGP Maintenance Lead", assigned_site: "NGP", role_name: "Maintenance Team" },
+        { id: "maint-4", email: "maintain4@cat.com", name: "KMCH Maintenance Lead", assigned_site: "KMCH", role_name: "Maintenance Team" },
       ];
       knownManagers.forEach(km => {
         if (!contacts.some(c => c.email === km.email)) {
@@ -141,16 +141,16 @@ export const MessagesWorkspace: React.FC<MessagesWorkspaceProps> = ({
       let siteServiceUsers = allUsers.filter(u => u.role_name === "Service Team" && (u.assigned_site === userSite || !userSite || u.assigned_site?.includes(userSite)));
       
       const siteKey = userSite ? userSite.toLowerCase() : "";
-      let defaultServiceEmail = "service.cas@cat.com";
-      if (siteKey.includes("tech")) defaultServiceEmail = "service.tech@cat.com";
-      else if (siteKey.includes("ngp")) defaultServiceEmail = "service.ngp@cat.com";
-      else if (siteKey.includes("kmch")) defaultServiceEmail = "service.kmch@cat.com";
+      let defaultServiceEmail = "service1@cat.com";
+      if (siteKey.includes("tech")) defaultServiceEmail = "service2@cat.com";
+      else if (siteKey.includes("ngp")) defaultServiceEmail = "service3@cat.com";
+      else if (siteKey.includes("kmch")) defaultServiceEmail = "service4@cat.com";
 
       if (!siteServiceUsers.some(u => u.email === defaultServiceEmail)) {
         siteServiceUsers.push({
           id: `svc-${siteKey}`,
           email: defaultServiceEmail,
-          name: `${userSite || "Site"} Service Team`,
+          name: `${userSite || "Site"} Service Lead`,
           assigned_site: userSite || "PSG CAS",
           role_name: "Service Team"
         });
@@ -164,14 +164,14 @@ export const MessagesWorkspace: React.FC<MessagesWorkspaceProps> = ({
       let siteMaintenanceUsers = allUsers.filter(u => u.role_name === "Maintenance Team" && (u.assigned_site === userSite || !userSite || u.assigned_site?.includes(userSite)));
 
       const siteKey = userSite ? userSite.toLowerCase() : "";
-      let defaultManagerEmail = "manager1@cat.com";
-      if (siteKey.includes("tech")) defaultManagerEmail = "manager2@cat.com";
-      else if (siteKey.includes("ngp")) defaultManagerEmail = "manager3@cat.com";
-      else if (siteKey.includes("kmch")) defaultManagerEmail = "manager4@cat.com";
+      let defaultManagerEmail = "maintain1@cat.com";
+      if (siteKey.includes("tech")) defaultManagerEmail = "maintain2@cat.com";
+      else if (siteKey.includes("ngp")) defaultManagerEmail = "maintain3@cat.com";
+      else if (siteKey.includes("kmch")) defaultManagerEmail = "maintain4@cat.com";
 
       if (!siteMaintenanceUsers.some(u => u.email === defaultManagerEmail)) {
         siteMaintenanceUsers.push({
-          id: `mgr-${siteKey}`,
+          id: `maint-${siteKey}`,
           email: defaultManagerEmail,
           name: `${userSite || "Site"} Maintenance Lead`,
           assigned_site: userSite || "PSG CAS",
@@ -274,30 +274,10 @@ export const MessagesWorkspace: React.FC<MessagesWorkspaceProps> = ({
     e.preventDefault();
     if (!selectedContact || !messageBody.trim()) return;
 
-    let recipientId = selectedContact.id;
-    try {
-      const res = await fetch(`${API_URL}/api/auth/users/`, {
-        headers: {
-          "Authorization": `Bearer ${localStorage.getItem("access_token")}`
-        }
-      });
-      if (res.ok) {
-        const users = await res.json();
-        const list = Array.isArray(users) ? users : users.results || [];
-        const found = list.find((u: any) => u.email === selectedContact.email);
-        if (found) {
-          recipientId = found.id;
-        }
-      }
-    } catch (err) {
-      console.warn("Failed dynamically looking up recipient ID by email:", err);
-    }
-
     const payload = {
-      recipient: recipientId,
       recipient_email: selectedContact.email,
       body: messageBody,
-      site: selectedContact.assigned_site || "Global Support",
+      site: selectedContact.assigned_site || user?.assigned_site || "Global Operations",
       machine_code: machineContext,
       subject: activeSubject || machineContext || "Direct Message",
       status: "Waiting for Reply"
