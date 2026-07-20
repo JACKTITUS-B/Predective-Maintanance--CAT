@@ -118,10 +118,10 @@ export const SitesWorkspace: React.FC<SitesWorkspaceProps> = ({ onTriggerMessage
 
   const getManagerEmailForSite = (siteName: string): string => {
     const norm = siteName.toLowerCase();
-    if (norm.includes("cas")) return "manager1@cat.com";
-    if (norm.includes("tech")) return "manager2@cat.com";
-    if (norm.includes("ngp")) return "manager3@cat.com";
-    if (norm.includes("kmch")) return "manager4@cat.com";
+    if (norm.includes("cas")) return "maintain1@cat.com";
+    if (norm.includes("tech")) return "maintain2@cat.com";
+    if (norm.includes("ngp")) return "maintain3@cat.com";
+    if (norm.includes("kmch")) return "maintain4@cat.com";
     return "admin@cat.com";
   };
 

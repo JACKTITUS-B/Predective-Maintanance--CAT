@@ -141,9 +141,9 @@ export default function Home() {
     if (!user) return [];
     const roleName = user.role?.name;
     if (roleName === "Super Admin") return ["dashboard", "sites", "reports", "messages", "profile"];
-    if (roleName === "Maintenance Team") return ["dashboard", "maintenance", "profile"];
-    if (roleName === "Service Team") return ["dashboard", "service", "profile"];
-    return [];
+    if (roleName === "Maintenance Team") return ["dashboard", "maintenance", "messages", "profile"];
+    if (roleName === "Service Team") return ["dashboard", "service", "messages", "profile"];
+    return ["dashboard", "messages", "profile"];
   }, [user]);
 
   useEffect(() => {
