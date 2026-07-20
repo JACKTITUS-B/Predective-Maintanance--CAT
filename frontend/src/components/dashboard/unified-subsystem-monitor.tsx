@@ -275,6 +275,29 @@ export const UnifiedSubsystemMonitor: React.FC<UnifiedSubsystemMonitorProps> = (
           const { subHealth, failProb, sensors } = getSubsystemMetrics(eq);
           const isSelected = selectedSubsystem === eq.name;
 
+          // Evaluate each sensor reading against the Threshold Intelligence Layer
+          const evaluatedSensors = Object.entries(sensors).map(([key, val]: any) => {
+            const evalRes = evaluateSensor(key, val);
+            const unit = SENSOR_THRESHOLDS[key]?.unit || "";
+            const displayName = key.replace(/_/g, " ");
+            return { key, displayName, unit, ...evalRes };
+          });
+
+          // Compute overall subsystem state (SAFE / WARNING / CRITICAL / FAILURE)
+          let computedStatus = "SAFE";
+          let computedVariant: "success" | "warning" | "danger" = "success";
+
+          if (evaluatedSensors.some(s => s.status === "failure")) {
+            computedStatus = "FAILURE";
+            computedVariant = "danger";
+          } else if (evaluatedSensors.some(s => s.status === "critical")) {
+            computedStatus = "CRITICAL";
+            computedVariant = "danger";
+          } else if (evaluatedSensors.some(s => s.status === "warning")) {
+            computedStatus = "WARNING";
+            computedVariant = "warning";
+          }
+
           return (
             <Card
               key={eq.id}
@@ -290,8 +313,8 @@ export const UnifiedSubsystemMonitor: React.FC<UnifiedSubsystemMonitorProps> = (
                   <span className="font-bold text-xs uppercase tracking-wide text-stone-900 dark:text-stone-100">
                     {eq.name.replace(/_/g, " ")}
                   </span>
-                  <Badge variant={eq.status === "operational" ? "success" : eq.status === "warning" ? "warning" : "danger"}>
-                    {eq.status.toUpperCase()}
+                  <Badge variant={computedVariant}>
+                    {computedStatus}
                   </Badge>
                 </div>
 
@@ -303,37 +326,31 @@ export const UnifiedSubsystemMonitor: React.FC<UnifiedSubsystemMonitorProps> = (
                     </span>
                   </div>
                   <div className="text-right">
-                    <span className="text-[9px] uppercase font-bold text-stone-500 block">Fail Probability</span>
+                    <span className="text-[9px] uppercase font-bold text-stone-500 block">Failure Probability</span>
                     <span className="font-bold text-stone-800 dark:text-stone-200">{(failProb * 100).toFixed(0)}%</span>
                   </div>
                 </div>
 
                 {/* Subsystem specific live sensors with value-only state coloring */}
                 <div className="space-y-2.5 mt-3 pt-3 border-t border-stone-200/50 dark:border-stone-800/40">
-                  {Object.entries(sensors).map(([key, val]: any) => {
-                    const evalRes = evaluateSensor(key, val);
-                    const unit = SENSOR_THRESHOLDS[key]?.unit || "";
-                    const displayName = key.replace(/_/g, " ");
-
-                    return (
-                      <div key={key} className="space-y-1">
-                        <div className="flex justify-between items-center text-xs">
-                          <span className="text-stone-400 font-medium">{displayName}</span>
-                          <span className="font-mono">
-                            <strong className={`font-extrabold ${evalRes.textColor}`}>{evalRes.val}</strong>{" "}
-                            {unit && <span className="text-stone-400 text-[10px] font-normal">{unit}</span>}
-                          </span>
-                        </div>
-                        {evalRes.fault && (
-                          <div className="p-2 bg-amber-500/10 border border-amber-500/30 rounded text-[9px] space-y-0.5">
-                            <span className="font-extrabold text-amber-500 block">{evalRes.fault.title}</span>
-                            <div className="text-stone-400"><strong className="text-stone-300">Cause:</strong> {evalRes.fault.reason}</div>
-                            <div className="text-[#FFCD00] font-bold"><strong className="text-stone-300">Action:</strong> {evalRes.fault.action}</div>
-                          </div>
-                        )}
+                  {evaluatedSensors.map((item) => (
+                    <div key={item.key} className="space-y-1">
+                      <div className="flex justify-between items-center text-xs">
+                        <span className="text-stone-400 font-medium">{item.displayName}</span>
+                        <span className="font-mono">
+                          <strong className={`font-extrabold ${item.textColor}`}>{item.val}</strong>{" "}
+                          {item.unit && <span className="text-stone-400 text-[10px] font-normal">{item.unit}</span>}
+                        </span>
                       </div>
-                    );
-                  })}
+                      {item.fault && (
+                        <div className="p-2 bg-amber-500/10 border border-amber-500/30 rounded text-[9px] space-y-0.5 mt-1">
+                          <span className="font-extrabold text-amber-500 block">{item.fault.title}</span>
+                          <div className="text-stone-400"><strong className="text-stone-300">Cause:</strong> {item.fault.reason}</div>
+                          <div className="text-[#FFCD00] font-bold"><strong className="text-stone-300">Action:</strong> {item.fault.action}</div>
+                        </div>
+                      )}
+                    </div>
+                  ))}
                 </div>
               </div>
             </Card>
