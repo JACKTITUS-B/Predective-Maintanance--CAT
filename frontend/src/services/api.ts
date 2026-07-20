@@ -11,7 +11,8 @@ export async function fetchWithAuth(endpoint: string, options: RequestInit = {})
     headers["Authorization"] = `Bearer ${token}`;
   }
 
-  const url = endpoint.startsWith("http") ? endpoint : `${API_URL}${endpoint}`;
+  const formattedEndpoint = endpoint.startsWith("/") ? endpoint : `/${endpoint}`;
+  const url = endpoint.startsWith("http") ? endpoint : `${API_URL}${formattedEndpoint}`;
   const response = await fetch(url, {
     ...options,
     headers,
